@@ -20,7 +20,8 @@ from bs4 import BeautifulSoup  # type: ignore
 
 from cc_net import jsonql
 
-WET_URL_ROOT = "https://commoncrawl.s3.amazonaws.com"
+# WET_URL_ROOT = "https://commoncrawl.s3.amazonaws.com"
+WET_URL_ROOT = "https://data.commoncrawl.org"
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,18 @@ def parse_doc(headers: List[str], doc: List[str]) -> Optional[dict]:
     WARC-Block-Digest: sha1:S3DTWCONT2L6ORTGCY2KXEZ37LNBB7V2
     Content-Type: text/plain
     Content-Length: 7743
+
+    NEW HEADER FORMAT   
+    WARC/1.0
+    WARC-Type: conversion
+    WARC-Target-URI: http://www.ahlfsmgs.com/?Col2/Col16/37.html
+    WARC-Date: 2023-01-26T22:13:27Z
+    WARC-Record-ID: <urn:uuid:d96c4073-c16f-495f-aa32-96075bce5f23>
+    WARC-Refers-To: <urn:uuid:2c6b24e6-f5fd-4f11-9532-905d528346ba>
+    WARC-Block-Digest: sha1:PUVQI5IUCNPBUANNS7LIQML42ZEUPRJ3
+    WARC-Identified-Content-Language: zho
+    Content-Type: text/plain
+    Content-Length: 172903 
     """
     if not headers or not doc:
         return None
@@ -76,7 +89,7 @@ def parse_doc(headers: List[str], doc: List[str]) -> Optional[dict]:
         url = headers[2].split()[1]
         date = headers[3].split()[1]
         digest = headers[6].split()[1]
-        length = int(headers[8].split()[1])
+        length = int(headers[9].split()[1])#8
     except Exception as e:
         logger.warning("Can't parse header:", e, headers, doc)
         return None
