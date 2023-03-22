@@ -86,10 +86,23 @@ def parse_doc(headers: List[str], doc: List[str]) -> Optional[dict]:
         warc_type = headers[1].split()[1]
         if warc_type != "conversion":
             return None
-        url = headers[2].split()[1]
-        date = headers[3].split()[1]
-        digest = headers[6].split()[1]
-        length = int(headers[9].split()[1])#8
+        # url = headers[2].split()[1]
+        # date = headers[3].split()[1]
+        # digest = headers[6].split()[1]
+        # length = int(headers[9].split()[1])#8
+        for header in headers:
+            if header.startwith("WARC-Target-URI"):
+                url = header.split()[1]
+                break
+            if header.startswith("WARC-Date"):
+                date = header.split()[1]
+                break
+            if header.startswith("WARC-Block-Digest"):
+                digest = header.split()[1]
+                break
+            if header.startswith("Content-Length:"):
+                length = header.split()[1]
+                break
     except Exception as e:
         logger.warning("Can't parse header:", e, headers, doc)
         return None
@@ -134,7 +147,7 @@ def group_by_docs(warc_lines: Iterable[str]) -> Iterable[dict]:
 
     # Return the last document
     if doc:
-        parsed = parse_doc(headers, doc)
+        parsed = parse_doc(headers, doc) 
         if parsed is not None:
             yield parsed
 
