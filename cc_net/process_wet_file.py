@@ -115,18 +115,14 @@ def parse_doc(headers: List[str], doc: List[str]) -> Optional[dict]:
         # digest = headers[6].split()[1]
         # length = int(headers[9].split()[1])#8
         for header in headers:
-            if header.startwith("WARC-Target-URI"):
+            if header.startswith("WARC-Target-URI"):
                 url = header.split()[1]
-                break
             if header.startswith("WARC-Date"):
                 date = header.split()[1]
-                break
             if header.startswith("WARC-Block-Digest"):
                 digest = header.split()[1]
-                break
             if header.startswith("Content-Length:"):
                 length = header.split()[1]
-                break
     except Exception as e:
         logger.warning("Can't parse header:", e, headers, doc)
         return None
@@ -275,11 +271,11 @@ class LocalCCSegmentsReader(CCSegmentsReader):
         self.local_wet_folder = Path(local_wet_folder)
 
     def open_segment(self, segment: str) -> Iterable[str]:
-        local_file_path = self.local_wet_folder / segment.split("/")[-1]
+        local_file_path = self.local_wet_folder / segment
         if not local_file_path.exists():
             raise FileNotFoundError(f"File not found: {local_file_path}")
 
-        return jsonql.open_file(local_file_path)
+        return jsonql.open_read(local_file_path)
 
     @property
     def segments(self) -> Sequence[str]:
@@ -322,7 +318,14 @@ class CCShardReader(LocalCCSegmentsReader):
             return self._segments
         
         if self.local_wet_dir:  # If a local WET directory is provided
-            wet_files = list(self.local_wet_dir.glob("*.wet"))  # Get all .wet files in the directory
+            # Read file list
+            wet_files = []
+            with open(self.local_wet_dir.joinpath("file_list")) as file:
+                file.readline()
+                for line in file:
+                    url = line.split()[0]
+                    filepath = "/".join(url.split("/")[-4:])
+                    wet_files.append(filepath)
             segments = [str(wet_file) for wet_file in wet_files]  # Convert file paths to strings
         else:
             segments = cc_segments(self.dump, self.cache_dir)

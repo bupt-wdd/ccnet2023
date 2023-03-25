@@ -126,7 +126,7 @@ class Config(NamedTuple):
             num_segments_per_shard=self.num_segments_per_shard,
             min_len=self.min_len,
             cache_dir=dump_cache,
-            local_wet_dir = Path("/data/crawl-data/CC-MAIN-2023-06/segments/1674764499801.40/wet")
+            local_wet_dir=Path(f"/data/crawl-data/CC-MAIN-{self.dump}")
         )
 
     @classmethod
