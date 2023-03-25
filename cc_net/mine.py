@@ -74,7 +74,7 @@ class Config(NamedTuple):
     """
 
     config_name: str = "base"
-    dump: str = "2017-51"
+    dump: str = "2023-06"
     output_dir: Path = Path("data")
     mined_dir: str = "mined"
     execution: str = "auto"
@@ -98,7 +98,7 @@ class Config(NamedTuple):
     experiments: Sequence[str] = []
     cache_dir: Optional[Path] = None
 
-    def get_executor(
+    def get_executor(    
         self, name: str, timeout_hour: int = 1, mem_gb: int = 1, cpus: int = 1
     ) -> Executor:
         name = "_".join((name, self.config_name, *self.experiments))
@@ -126,6 +126,7 @@ class Config(NamedTuple):
             num_segments_per_shard=self.num_segments_per_shard,
             min_len=self.min_len,
             cache_dir=dump_cache,
+            local_wet_dir = Path("/data/crawl-data/CC-MAIN-2023-06/segments/1674764499801.40/wet")
         )
 
     @classmethod
@@ -606,6 +607,7 @@ def get_main_parser() -> ArgumentParser:
 
     # Override defaults value to None, so we know what was set by the user.
     # Note that it will keep the original default values in the help message.
+    # import pdb; pdb.set_trace()
     p.set_defaults(**{f: None for f in Config._fields})
     p.add_argument("--config", type=str, default="base")
     p.set_defaults(__command=main)

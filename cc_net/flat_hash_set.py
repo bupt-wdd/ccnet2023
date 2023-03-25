@@ -245,3 +245,4 @@ def compare_load(*filenames):
 
 if __name__ == "__main__":
     compare_load(*sys.argv[1:])
+    

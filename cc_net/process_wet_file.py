@@ -11,6 +11,8 @@ import re
 import tempfile
 import time
 import urllib.request
+import gzip
+import requests
 from pathlib import Path
 from typing import ContextManager, Iterable, Iterator, List, Optional, Sequence
 from urllib.parse import urlparse
@@ -31,13 +33,35 @@ def cc_wet_paths_url(dump_id: str) -> str:
     return "/".join([WET_URL_ROOT, "crawl-data", "CC-MAIN-" + dump_id, "wet.paths.gz"])
 
 
+# @functools.lru_cache()
+# def cc_segments(dump_id: str, cache_dir: Path = None) -> List[str]: # 
+#     wet_paths = cc_wet_paths_url(dump_id)
+#     cache_dir = cache_dir or jsonql._tmp_dir()
+#     wet_paths_cache = cache_dir / f"wet_{dump_id}.paths.gz"
+#     f = jsonql.open_remote_file(wet_paths, cache=wet_paths_cache)
+#     return [segment.strip() for segment in f]
+
+
+
 @functools.lru_cache()
-def cc_segments(dump_id: str, cache_dir: Path = None) -> List[str]: # 
-    wet_paths = cc_wet_paths_url(dump_id)
-    cache_dir = cache_dir or jsonql._tmp_dir()
-    wet_paths_cache = cache_dir / f"wet_{dump_id}.paths.gz"
-    f = jsonql.open_remote_file(wet_paths, cache=wet_paths_cache)
-    return [segment.strip() for segment in f]
+def cc_segments(dump_id: str, cache_dir: Path = None, local_wet_folder: Path = None) -> List[str]:
+    if local_wet_folder and local_wet_folder.is_dir():
+        # 获取本地文件夹中的所有.wet文件
+        segments = sorted([str(file) for file in local_wet_folder.glob('*.wet')])
+
+        # 确保文件列表不为空
+        if not segments:
+            raise FileNotFoundError(f"No .wet files found in {local_wet_folder}")
+
+        return segments
+    else:
+        wet_paths = cc_wet_paths_url(dump_id)
+        cache_dir = cache_dir or jsonql._tmp_dir()
+        wet_paths_cache = cache_dir / f"wet_{dump_id}.paths.gz"
+        f = jsonql.open_remote_file(wet_paths, cache=wet_paths_cache)
+        return [segment.strip() for segment in f]
+
+
 
 
 def list_dumps() -> List[str]:
@@ -170,7 +194,7 @@ def parse_warc_file(lines: Iterable[str], min_len: int = 1) -> Iterator[dict]:
 def dl( 
     dump: str,
     shard: int,
-    num_shards: int = 10,
+    num_shards: int,
     output: Path = None,
     num_segments_per_shard: int = 0,
 ):
@@ -184,6 +208,8 @@ def dl(
         num_segments_per_shard: manual control of the number of segment per shard.
     """
     local_wet_directory = Path("/data/crawl-data/CC-MAIN-2023-06/segments/1674764499801.40/wet")
+    import pdb; pdb.set_trace()
+
     reader = CCShardReader(dump, shard, num_shards, num_segments_per_shard, local_wet_dir=local_wet_directory)
     jsonql.run_pipes(inputs=reader, output=output)
     logger.info(f"Done. {output} is ready.")
@@ -261,7 +287,7 @@ class LocalCCSegmentsReader(CCSegmentsReader):
             self._segments = [str(p.relative_to(self.local_wet_folder)) for p in self.local_wet_folder.glob("*.warc.wet.gz")]
         return self._segments
 
-class CCShardReader(CCSegmentsReader):
+class CCShardReader(LocalCCSegmentsReader):
     def __init__(
         self,
         dump: str,
@@ -281,7 +307,8 @@ class CCShardReader(CCSegmentsReader):
             num_segments_per_shard: if set will limit the number of files by shard.
                 Useful for testing.
         """
-        super().__init__([], min_len=min_len, cache_dir=cache_dir)
+        super().__init__(local_wet_folder=str(local_wet_dir), min_len=min_len)
+
         self.dump = dump
         self.shard = shard
         assert num_shards > 0 or num_segments_per_shard > 0
@@ -293,7 +320,7 @@ class CCShardReader(CCSegmentsReader):
     def segments(self) -> Sequence[str]:
         if self._segments:
             return self._segments
-
+        
         if self.local_wet_dir:  # If a local WET directory is provided
             wet_files = list(self.local_wet_dir.glob("*.wet"))  # Get all .wet files in the directory
             segments = [str(wet_file) for wet_file in wet_files]  # Convert file paths to strings
